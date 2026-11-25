@@ -10,9 +10,55 @@ const hospitalService = require('../services/hospitalService');
 const getDriver = async (user) => {
   console.log("LOGIN USER DATA:", user);
 
-  const driver = await Driver.findOne({
+  let driver = await Driver.findOne({
     userId: user._id || user.id
   });
+
+  if (!driver) {
+    try {
+      const uId = (user._id || user.id || '').toString();
+      const lastDigits = (user.phone || '').slice(-4) || uId.slice(-4) || '1001';
+      driver = await Driver.create({
+        userId: user._id || user.id,
+        ambulanceNumber: 'TS09AB' + lastDigits,
+        licenseNumber: 'DL-' + lastDigits,
+        ambulanceType: 'BASIC',
+        vehicleModel: 'Force Traveller',
+        vehicleYear: 2024,
+        isAvailable: true,
+        rating: 4.9,
+        totalTrips: 0,
+        location: { type: 'Point', coordinates: [78.4867, 17.3850] },
+      });
+      if (user.role !== 'driver') {
+        user.role = 'driver';
+        await user.save();
+      }
+      console.log('Auto-created missing Driver profile for user:', uId);
+    } catch (createErr) {
+      try {
+        const uId = (user._id || user.id || '').toString();
+        driver = await Driver.create({
+          userId: user._id || user.id,
+          ambulanceNumber: 'AMB-' + uId.slice(-6).toUpperCase(),
+          licenseNumber: 'DL-' + uId.slice(-6).toUpperCase(),
+          ambulanceType: 'BASIC',
+          vehicleModel: 'Ambulance Unit',
+          vehicleYear: 2024,
+          isAvailable: true,
+          rating: 4.9,
+          totalTrips: 0,
+          location: { type: 'Point', coordinates: [78.4867, 17.3850] },
+        });
+        if (user.role !== 'driver') {
+          user.role = 'driver';
+          await user.save();
+        }
+      } catch (retryErr) {
+        console.error('Failed to auto-create driver profile:', retryErr);
+      }
+    }
+  }
 
   if (!driver) throw new AppError('Driver profile not found', 404);
 
