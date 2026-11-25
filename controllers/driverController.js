@@ -8,8 +8,14 @@ const { getRoute } = require('../services/mapsService');
 const hospitalService = require('../services/hospitalService');
 
 const getDriver = async (user) => {
-  const driver = await Driver.findOne({ userId: user._id });
+  console.log("LOGIN USER DATA:", user);
+
+  const driver = await Driver.findOne({
+    userId: user._id || user.id
+  });
+
   if (!driver) throw new AppError('Driver profile not found', 404);
+
   return driver;
 };
 
@@ -255,3 +261,4 @@ exports.updateLocation = asyncHandler(async (req, res) => {
   if (!result) throw new AppError('Invalid location or driver not found', 400);
   ok(res, { updated: true });
 });
+
