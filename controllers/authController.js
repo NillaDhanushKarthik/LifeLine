@@ -185,5 +185,5 @@ exports.updateMe = asyncHandler(async (req, res) => {
   if (name || fullName) user.fullName = (name || fullName).trim();
   if (email !== undefined) user.email = email.trim();
   await user.save();
-  ok(res, user);
+  ok(res, { user: user.toObject ? user.toObject() : user });
 });

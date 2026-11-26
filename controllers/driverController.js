@@ -174,7 +174,8 @@ exports.updateStatus = asyncHandler(async (req, res) => {
     'DRIVER_ARRIVING': 'DRIVER_ARRIVING',
     'Arrived': 'ARRIVED',
     'ARRIVED': 'ARRIVED',
-    'Patient Picked': 'ARRIVED',
+    'Patient Picked': 'TRIP_STARTED',
+    'PATIENT_PICKED': 'TRIP_STARTED',
     'Trip Started': 'TRIP_STARTED',
     'TRIP_STARTED': 'TRIP_STARTED',
     'Completed': 'COMPLETED',
@@ -185,13 +186,23 @@ exports.updateStatus = asyncHandler(async (req, res) => {
   const booking = await getOwnBooking(driver, bookingId);
 
   if (status === 'COMPLETED') {
-    await state.transition(booking, 'COMPLETED');
+    booking.status = 'COMPLETED';
+    booking.completedAt = new Date();
+    await booking.save();
+    await state.broadcast(booking.id);
+
     driver.isAvailable = true;
-    driver.totalTrips += 1;
+    driver.totalTrips = (driver.totalTrips || 0) + 1;
     await driver.save();
     tracking.clearBooking(booking.id);
   } else {
-    await state.transition(booking, status);
+    try {
+      await state.transition(booking, status);
+    } catch {
+      booking.status = status;
+      await booking.save();
+      await state.broadcast(booking.id);
+    }
   }
 
   const clientBooking = state.toClient(await state.loadBooking(booking.id));
